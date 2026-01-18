@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Chapter, Question, Answer } from './types';
 import { generateChapterPredictions, generateAnswersForQuestions } from './services/geminiService';
 import { CHAPTER_OCR_DATA } from './data/chapterContent';
@@ -33,6 +33,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loadingAnswers, setLoadingAnswers] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [isPreparingPdf, setIsPreparingPdf] = useState(false);
 
   const startPrediction = async (chapter: Chapter) => {
     setChapters(prev => prev.map(ch => ch.id === chapter.id ? { ...ch, status: 'generating' } : ch));
@@ -89,7 +90,7 @@ const App: React.FC = () => {
       const updated: Chapter = {
         ...activeChapter,
         questions: [...(activeChapter.questions || []), ...result.questions],
-        answersGenerated: false // Reset answers if new questions are added
+        answersGenerated: false
       };
 
       setActiveChapter(updated);
@@ -101,6 +102,18 @@ const App: React.FC = () => {
     }
   };
 
+  const handlePrint = useCallback(() => {
+    if (!activeChapter) return;
+    
+    setIsPreparingPdf(true);
+    
+    // Triggering print after a small delay to ensure any dynamic updates are painted
+    setTimeout(() => {
+        window.print();
+        setIsPreparingPdf(false);
+    }, 500);
+  }, [activeChapter]);
+
   const getCategoryColor = (category: string) => {
     switch (category) {
       case 'Chemistry': return 'bg-cyan-50 text-cyan-600 border-cyan-100';
@@ -111,9 +124,11 @@ const App: React.FC = () => {
     }
   };
 
+  const getQuestionsByType = (type: string) => activeChapter?.questions?.filter(q => q.type === type) || [];
+
   return (
     <div className="min-h-screen bg-slate-50 pb-12 font-sans">
-      <header className="bg-slate-900 text-white py-14 px-4 shadow-2xl mb-12 relative overflow-hidden">
+      <header className="bg-slate-900 text-white py-14 px-4 shadow-2xl mb-12 relative overflow-hidden no-print">
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/20 rounded-full blur-[120px] -mr-48 -mt-48"></div>
         <div className="container mx-auto max-w-6xl relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="text-center md:text-left">
@@ -140,9 +155,9 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className="container mx-auto max-w-6xl px-4">
+      <main className="container mx-auto max-w-6xl px-4 no-print">
         {error && (
-          <div className="mb-8 bg-red-50 border-l-4 border-red-500 p-5 rounded-r-2xl shadow-lg flex items-center justify-between animate-in slide-in-from-top-4 duration-300 no-print">
+          <div className="mb-8 bg-red-50 border-l-4 border-red-500 p-5 rounded-r-2xl shadow-lg flex items-center justify-between animate-in slide-in-from-top-4 duration-300">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center text-red-500">
                 <i className="fas fa-bolt"></i>
@@ -155,7 +170,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 no-print">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {chapters.map((chapter, index) => {
             const meta = CHAPTER_METADATA[index];
             const colorClass = getCategoryColor(meta.category);
@@ -183,6 +198,7 @@ const App: React.FC = () => {
                   <div className="pt-2">
                     {chapter.status === 'ready' ? (
                       <button 
+                        type="button"
                         onClick={() => startPrediction(chapter)}
                         className="w-full bg-slate-900 hover:bg-indigo-600 text-white font-bold py-4 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 active:scale-95"
                       >
@@ -196,6 +212,7 @@ const App: React.FC = () => {
                       </div>
                     ) : (
                       <button 
+                        type="button"
                         onClick={() => setActiveChapter(chapter)}
                         className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-3 active:scale-95"
                       >
@@ -211,10 +228,11 @@ const App: React.FC = () => {
         </div>
       </main>
 
+      {/* Modal Interface - Strictly NO-PRINT */}
       {activeChapter && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300 no-print">
           <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col border border-white/20 animate-in zoom-in-95 duration-300">
-            <div className="p-10 bg-slate-900 text-white relative">
+            <div className="p-10 bg-slate-900 text-white relative flex-shrink-0">
               <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] -mr-32 -mt-32"></div>
               <div className="flex items-start justify-between relative z-10">
                 <div>
@@ -225,6 +243,7 @@ const App: React.FC = () => {
                   <h2 className="text-4xl font-black tracking-tight">{activeChapter.name}</h2>
                 </div>
                 <button 
+                  type="button"
                   onClick={() => setActiveChapter(null)}
                   className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all flex items-center justify-center"
                 >
@@ -233,7 +252,7 @@ const App: React.FC = () => {
               </div>
             </div>
             
-            <div className="overflow-y-auto p-10 bg-slate-50/30">
+            <div className="overflow-y-auto p-10 bg-slate-50/30 custom-scrollbar flex-grow">
               <div className="space-y-10">
                 {activeChapter.questions?.map((q, idx) => {
                   const answer = activeChapter.answers?.find(a => a.questionId === q.id);
@@ -265,10 +284,8 @@ const App: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Revealed Section: Reasoning and Answer */}
                       {activeChapter.answersGenerated && (
                         <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700">
-                          {/* Reasoning */}
                           <div className="bg-amber-50/50 p-6 rounded-3xl border border-amber-100">
                             <div className="flex items-start gap-4">
                               <div className="w-10 h-10 bg-white rounded-2xl shadow-sm flex items-center justify-center text-amber-500 flex-shrink-0">
@@ -281,7 +298,6 @@ const App: React.FC = () => {
                             </div>
                           </div>
 
-                          {/* Expert Answer */}
                           {answer && (
                             <div className="bg-indigo-50/30 p-8 rounded-3xl border border-indigo-100">
                               <div className="flex items-start gap-4">
@@ -312,7 +328,6 @@ const App: React.FC = () => {
                   );
                 })}
 
-                {/* Loading states for more questions or answers */}
                 {(loadingMore || loadingAnswers) && (
                    <div className="flex flex-col items-center justify-center py-12 gap-4">
                       <div className="w-16 h-16 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
@@ -324,10 +339,10 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Modal Footer with new buttons */}
-            <div className="p-8 bg-white border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="p-8 bg-white border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6 flex-shrink-0">
               <div className="flex items-center gap-4">
                 <button 
+                  type="button"
                   onClick={handleGenerateAnswers}
                   disabled={activeChapter.answersGenerated || loadingAnswers}
                   className={`flex items-center gap-3 font-black px-8 py-4 rounded-2xl transition-all shadow-xl active:scale-95 disabled:opacity-50 ${
@@ -341,6 +356,7 @@ const App: React.FC = () => {
                 </button>
                 
                 <button 
+                  type="button"
                   onClick={handleMoreQuestions}
                   disabled={loadingMore}
                   className="flex items-center gap-3 bg-slate-100 text-slate-700 font-black px-8 py-4 rounded-2xl hover:bg-slate-200 transition-all active:scale-95 disabled:opacity-50"
@@ -352,13 +368,16 @@ const App: React.FC = () => {
 
               <div className="flex items-center gap-6">
                 <button 
-                  onClick={() => window.print()}
-                  className="text-slate-400 font-bold hover:text-slate-800 transition-colors flex items-center gap-2"
+                  type="button"
+                  onClick={handlePrint}
+                  disabled={isPreparingPdf}
+                  className="text-slate-500 font-bold hover:text-slate-800 transition-colors flex items-center gap-2 group disabled:opacity-50"
                 >
-                  <i className="fas fa-download"></i>
-                  Export
+                  <i className={`fas fa-file-pdf group-hover:text-red-500 transition-colors ${isPreparingPdf ? 'animate-pulse' : ''}`}></i>
+                  {isPreparingPdf ? 'Preparing PDF...' : 'Save as PDF'}
                 </button>
                 <button 
+                  type="button"
                   onClick={() => setActiveChapter(null)}
                   className="bg-slate-900 text-white font-black px-12 py-4 rounded-2xl hover:bg-black transition-all active:scale-95 shadow-xl shadow-slate-200"
                 >
@@ -370,23 +389,106 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Basic print styles */}
-      <div className="hidden print:block p-10 bg-white min-h-screen">
-         <h1 className="text-3xl font-bold mb-4">{activeChapter?.name} Prediction Report</h1>
-         <div className="space-y-10">
-           {activeChapter?.questions?.map((q, idx) => (
-             <div key={idx} className="border-b pb-6">
-               <h3 className="text-xl font-bold mb-2">Q{idx + 1}. {q.text} ({q.marks}m)</h3>
-               {activeChapter.answersGenerated && activeChapter.answers?.[idx] && (
-                 <div className="mt-4">
-                   <p className="font-bold text-indigo-600">Model Answer:</p>
-                   <p>{activeChapter.answers[idx].content}</p>
+      {/* PROFESSIONAL PRINT TEMPLATE - Explicitly marked for print-only visibility */}
+      {activeChapter && (
+        <div className="print-only font-serif bg-white text-black min-h-screen">
+           <div className="p-12">
+              <div className="text-center border-b-4 border-black pb-8 mb-10">
+                 <p className="text-xs font-bold uppercase tracking-widest mb-1">Central Board of Secondary Education (CBSE)</p>
+                 <h1 className="text-3xl font-black uppercase mb-2">Secondary School Examination 2026</h1>
+                 <p className="text-xl font-bold border-t-2 border-slate-200 pt-2">{activeChapter.name}</p>
+                 <div className="flex justify-between mt-6 px-4 font-bold text-sm uppercase">
+                    <span>Class: X (Science)</span>
+                    <span>Predicted Batch: 2026</span>
+                    <span>Max Marks: 80</span>
                  </div>
-               )}
-             </div>
-           ))}
-         </div>
-      </div>
+              </div>
+
+              <div className="mb-10 p-6 border-2 border-slate-100 bg-slate-50/20">
+                 <h2 className="font-black text-lg mb-3 border-b border-black pb-1">General Instructions:</h2>
+                 <ul className="list-decimal list-inside space-y-1.5 text-sm font-medium">
+                    <li>The question paper consists of predicted "Hotspot" topics from Chapter: {activeChapter.id}.</li>
+                    <li>Section A contains Multiple Choice Questions (1 mark each).</li>
+                    <li>Section B contains Short Answer Type-I Questions (2 marks each).</li>
+                    <li>Section C contains Short Answer Type-II Questions (3 marks each).</li>
+                    <li>Section D contains Long Answer Type Questions (5 marks each).</li>
+                    <li>Section E contains Case-Based/Integrated Assessment Questions (4 marks).</li>
+                 </ul>
+              </div>
+
+              {['MCQ', 'VSA', 'SA', 'LA', 'CASE'].map((type, sIdx) => {
+                 const qs = getQuestionsByType(type);
+                 if (qs.length === 0) return null;
+                 return (
+                    <div key={type} className="mb-12 page-break-avoid">
+                       <div className="bg-slate-900 text-white px-4 py-1.5 font-bold uppercase tracking-wider mb-6 text-center text-sm">
+                          Section {String.fromCharCode(65 + sIdx)}: {
+                             type === 'MCQ' ? 'Multiple Choice' : 
+                             type === 'VSA' ? 'Short Answer Type I' :
+                             type === 'SA' ? 'Short Answer Type II' :
+                             type === 'LA' ? 'Long Answer' : 'Case Based'
+                          }
+                       </div>
+                       <div className="space-y-8">
+                          {qs.map((q, idx) => (
+                             <div key={idx} className="flex gap-4">
+                                <span className="font-bold min-w-[2rem]">Q{(activeChapter.questions?.indexOf(q) || 0) + 1}.</span>
+                                <div className="flex-grow">
+                                   <p className="text-lg leading-relaxed">{q.text}</p>
+                                   {type === 'MCQ' && (
+                                      <div className="grid grid-cols-2 gap-4 mt-4 ml-2">
+                                         <div className="text-sm font-medium">(a) ____________</div>
+                                         <div className="text-sm font-medium">(b) ____________</div>
+                                         <div className="text-sm font-medium">(c) ____________</div>
+                                         <div className="text-sm font-medium">(d) ____________</div>
+                                      </div>
+                                   )}
+                                </div>
+                                <span className="font-bold whitespace-nowrap">[{q.marks}]</span>
+                             </div>
+                          ))}
+                       </div>
+                    </div>
+                 );
+              })}
+
+              {activeChapter.answersGenerated && (
+                 <div className="page-break-before pt-10">
+                    <div className="text-center border-b-2 border-red-600 pb-4 mb-10">
+                       <h2 className="text-2xl font-black text-red-600 uppercase tracking-widest">Confidential Marking Guide</h2>
+                       <p className="text-xs font-bold text-slate-500">For Board Examiner Use Only • 2026 Predictions</p>
+                    </div>
+
+                    <div className="space-y-12">
+                       {activeChapter.questions?.map((q, idx) => {
+                          const ans = activeChapter.answers?.find(a => a.questionId === q.id);
+                          if (!ans) return null;
+                          return (
+                             <div key={idx} className="page-break-avoid border-b border-slate-100 pb-8 last:border-none">
+                                <div className="flex items-center gap-3 mb-3 border-l-4 border-slate-900 pl-4">
+                                   <span className="font-black text-lg">Solution {idx + 1}</span>
+                                   <span className="text-slate-400 text-xs italic">Ref: {q.type} ({q.marks}m)</span>
+                                </div>
+                                <div className="text-md leading-relaxed mb-4 whitespace-pre-wrap pl-4 font-medium">
+                                   {ans.content}
+                                </div>
+                                <div className="ml-4 bg-slate-50 border p-4 rounded-lg">
+                                   <p className="text-xs font-black uppercase mb-2 text-slate-500 tracking-tighter">Value Points (Marking Distribution):</p>
+                                   <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
+                                      {ans.markingSchemePoints.map((pt, pIdx) => (
+                                         <li key={pIdx} className="text-xs font-medium list-disc list-inside text-slate-700">{pt}</li>
+                                      ))}
+                                   </ul>
+                                </div>
+                             </div>
+                          );
+                       })}
+                    </div>
+                 </div>
+              )}
+           </div>
+        </div>
+      )}
     </div>
   );
 };

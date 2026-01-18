@@ -8,11 +8,38 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* Modern Print Optimization */
         @media print {
+            @page {
+                margin: 1.5cm;
+                size: A4;
+            }
+            html, body {
+                height: auto !important;
+                overflow: visible !important;
+                background: white !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
             .no-print { display: none !important; }
             .print-only { display: block !important; }
-            body { background: white !important; }
+            
+            /* High Quality Typography for PDF */
+            h1, h2, h3, h4, p, span {
+                color: black !important;
+            }
+            .shadow-2xl, .shadow-xl, .shadow-sm { 
+                box-shadow: none !important; 
+                border: 1px solid #e2e8f0 !important; 
+            }
         }
+        
+        /* Hide print elements on screen */
+        .print-only { display: none; }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 <script type="importmap">
 {
