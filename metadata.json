@@ -1,0 +1,5 @@
+{
+  "name": "CBSE 2026 Science Predictor Pro",
+  "description": "An interactive chapter-wise dashboard that uses AI to predict the most likely board exam questions for 2026 based on NCERT textbook content and 5-year trends.",
+  "requestFramePermissions": []
+}
