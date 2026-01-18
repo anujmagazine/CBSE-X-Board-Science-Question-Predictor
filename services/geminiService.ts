@@ -1,82 +1,105 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { ChapterResponse } from "../types";
+import { ChapterResponse, AnswersResponse, Question } from "../types";
 
-/**
- * Strips markdown code blocks and returns raw text.
- * Prevents JSON.parse from failing if the AI includes wrappers.
- */
 const cleanJsonResponse = (raw: string): string => {
   return raw.replace(/```json|```/g, "").trim();
 };
 
-export const generateChapterPredictions = async (chapterContent: string, chapterName: string): Promise<ChapterResponse> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API_KEY environment variable is not configured.");
+export const generateChapterPredictions = async (
+  chapterContent: string, 
+  chapterName: string,
+  existingQuestions: Question[] = []
+): Promise<ChapterResponse> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  const ai = new GoogleGenAI({ apiKey });
-  
+  const isMore = existingQuestions.length > 0;
   const prompt = `
-    Act as a CBSE Class X Science Board Examiner. Use the provided OCR textbook content to predict the most likely questions for the 2026 Board Exam.
+    Act as a CBSE Class X Science Board Examiner.
+    CHAPTER: "${chapterName}"
+    CONTENT: ${chapterContent}
     
-    CHAPTER NAME: "${chapterName}"
-    CHAPTER CONTENT:
-    ${chapterContent}
-    
-    TASK:
-    Based on the chapter context and the latest 5-year CBSE patterns (2021-2025), generate 8-10 HIGHLY PROBABLE questions.
+    ${isMore ? `The following questions have already been generated: ${existingQuestions.map(q => q.text).join(' | ')}. Generate 5-7 NEW, DIFFERENT high-probability questions.` : 'Generate 8-10 HIGHLY PROBABLE questions for the 2026 Board Exam.'}
     
     CONSTRAINTS:
-    1. Include 3 MCQs, 2 VSAs (2 marks), 2 SAs (3 marks), 1-2 LAs (5 marks), and 1 Case-based question.
-    2. Focus on "Hotspots" (concepts frequently asked in previous years).
-    3. For each question, provide a "probabilityScore" (1-100) and a brief "reasoning" for students.
-    
-    FORMAT:
-    Return ONLY a JSON object with the keys "questions" and "chapterSummary". No other text.
+    1. Focus on "Hotspots" (frequently asked concepts).
+    2. Provide probabilityScore (1-100) and brief reasoning.
+    3. Output must be strict JSON with "questions" and "chapterSummary".
   `;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: { parts: [{ text: prompt }] },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            questions: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  id: { type: Type.STRING },
-                  text: { type: Type.STRING },
-                  marks: { type: Type.NUMBER },
-                  type: { type: Type.STRING },
-                  probabilityScore: { type: Type.NUMBER },
-                  reasoning: { type: Type.STRING }
-                },
-                required: ["id", "text", "marks", "type", "probabilityScore", "reasoning"]
-              }
-            },
-            chapterSummary: { type: Type.STRING }
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: { parts: [{ text: prompt }] },
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          questions: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.STRING },
+                text: { type: Type.STRING },
+                marks: { type: Type.NUMBER },
+                type: { type: Type.STRING },
+                probabilityScore: { type: Type.NUMBER },
+                reasoning: { type: Type.STRING }
+              },
+              required: ["id", "text", "marks", "type", "probabilityScore", "reasoning"]
+            }
           },
-          required: ["questions", "chapterSummary"]
-        }
+          chapterSummary: { type: Type.STRING }
+        },
+        required: ["questions", "chapterSummary"]
       }
-    });
-
-    const text = response.text;
-    if (!text) throw new Error("Empty response from AI.");
-
-    const cleanedText = cleanJsonResponse(text);
-    return JSON.parse(cleanedText) as ChapterResponse;
-  } catch (error: any) {
-    console.error("Gemini Service Error:", error);
-    // If we have a specific error message from the API, we can handle it here
-    if (error.message?.includes("Requested entity was not found")) {
-      throw new Error("Model configuration error or API key issue.");
     }
-    throw error;
-  }
+  });
+
+  return JSON.parse(cleanJsonResponse(response.text)) as ChapterResponse;
+};
+
+export const generateAnswersForQuestions = async (questions: Question[]): Promise<AnswersResponse> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  const prompt = `
+    For the following CBSE Class X Science questions, generate expert model answers and marking scheme points (key points a student must mention to get full marks).
+    
+    QUESTIONS:
+    ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, marks: q.marks })))}
+    
+    Format the output as a JSON object with an "answers" array. Each answer should have "questionId", "content" (the full answer), and "markingSchemePoints" (array of strings).
+  `;
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: { parts: [{ text: prompt }] },
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          answers: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                questionId: { type: Type.STRING },
+                content: { type: Type.STRING },
+                markingSchemePoints: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING }
+                }
+              },
+              required: ["questionId", "content", "markingSchemePoints"]
+            }
+          }
+        },
+        required: ["answers"]
+      }
+    }
+  });
+
+  return JSON.parse(cleanJsonResponse(response.text)) as AnswersResponse;
 };

@@ -8,18 +8,28 @@ export interface Question {
   reasoning: string; // Why this is likely to appear
 }
 
+export interface Answer {
+  questionId: string;
+  content: string;
+  markingSchemePoints: string[];
+}
+
 export interface Chapter {
   id: number;
   name: string;
-  pdfData?: string; // Base64
-  fileName?: string;
   status: 'empty' | 'ready' | 'generating' | 'completed';
   questions?: Question[];
+  answers?: Answer[];
+  answersGenerated?: boolean;
 }
 
 export interface ChapterResponse {
   questions: Question[];
   chapterSummary: string;
+}
+
+export interface AnswersResponse {
+  answers: Answer[];
 }
 
 // Added interfaces to satisfy components/QuestionPaperView.tsx and components/AnswerSheetView.tsx
@@ -43,10 +53,4 @@ export interface QuestionPaper {
   totalMarks: number;
   generalInstructions: string[];
   sections: Section[];
-}
-
-export interface Answer {
-  questionId: string;
-  content: string;
-  markingSchemePoints: string[];
 }
