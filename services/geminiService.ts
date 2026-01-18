@@ -64,12 +64,13 @@ export const generateAnswersForQuestions = async (questions: Question[]): Promis
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const prompt = `
-    For the following CBSE Class X Science questions, generate expert model answers and marking scheme points (key points a student must mention to get full marks).
+    For the following CBSE Class X Science questions, generate expert model answers and marking scheme points.
+    IMPORTANT: You MUST use the exact same "id" provided for each question as the "questionId" in your response.
     
     QUESTIONS:
     ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, marks: q.marks })))}
     
-    Format the output as a JSON object with an "answers" array. Each answer should have "questionId", "content" (the full answer), and "markingSchemePoints" (array of strings).
+    Output a JSON object with an "answers" array.
   `;
 
   const response = await ai.models.generateContent({
