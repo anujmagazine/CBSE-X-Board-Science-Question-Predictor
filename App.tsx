@@ -6,19 +6,19 @@ import { generateChapterPredictions, generateAnswersForQuestions } from './servi
 import { CHAPTER_OCR_DATA } from './data/chapterContent';
 
 const CHAPTER_METADATA = [
-  { name: "Chemical Reactions and Equations", category: "Chemistry" },
-  { name: "Acids, Bases and Salts", category: "Chemistry" },
-  { name: "Metals and Non-metals", category: "Chemistry" },
-  { name: "Carbon and its Compounds", category: "Chemistry" },
-  { name: "Life Processes", category: "Biology" },
-  { name: "Control and Coordination", category: "Biology" },
-  { name: "How do Organisms Reproduce?", category: "Biology" },
-  { name: "Heredity", category: "Biology" },
-  { name: "Light – Reflection and Refraction", category: "Physics" },
-  { name: "The Human Eye and the Colourful World", category: "Physics" },
-  { name: "Electricity", category: "Physics" },
-  { name: "Magnetic Effects of Electric Current", category: "Physics" },
-  { name: "Our Environment", category: "Ecology" }
+  { name: "Chemical Reactions and Equations", category: "CHEMISTRY" },
+  { name: "Acids, Bases and Salts", category: "CHEMISTRY" },
+  { name: "Metals and Non-metals", category: "CHEMISTRY" },
+  { name: "Carbon and its Compounds", category: "CHEMISTRY" },
+  { name: "Life Processes", category: "BIOLOGY" },
+  { name: "Control and Coordination", category: "BIOLOGY" },
+  { name: "How do Organisms Reproduce?", category: "BIOLOGY" },
+  { name: "Heredity", category: "BIOLOGY" },
+  { name: "Light – Reflection and Refraction", category: "PHYSICS" },
+  { name: "The Human Eye and the Colourful World", category: "PHYSICS" },
+  { name: "Electricity", category: "PHYSICS" },
+  { name: "Magnetic Effects of Electric Current", category: "PHYSICS" },
+  { name: "Our Environment", category: "ECOLOGY" }
 ];
 
 const App: React.FC = () => {
@@ -27,7 +27,8 @@ const App: React.FC = () => {
       id: index + 1,
       name: meta.name,
       status: 'ready',
-      answersGenerated: false
+      answersGenerated: false,
+      category: meta.category
     }))
   );
   const [activeChapter, setActiveChapter] = useState<Chapter | null>(null);
@@ -115,7 +116,6 @@ const App: React.FC = () => {
     };
 
     try {
-      // Temporarily reveal to the renderer engine ONLY
       element.style.visibility = 'visible';
       element.style.left = '0';
       element.style.position = 'relative';
@@ -125,9 +125,8 @@ const App: React.FC = () => {
       showFeedback("PDF Download Complete!");
     } catch (err) {
       console.error("PDF generation error:", err);
-      setError("PDF engine failed. Try saving as TEXT or using the COPY feature.");
+      setError("PDF engine failed.");
     } finally {
-      // Re-hide from the main DOM flow immediately
       element.style.visibility = 'hidden';
       element.style.left = '-9999px';
       element.style.position = 'absolute';
@@ -158,7 +157,7 @@ const App: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showFeedback("Chapter exported as Text!");
+    showFeedback("Exported as Text!");
   };
 
   const handleCopyToClipboard = () => {
@@ -175,17 +174,24 @@ const App: React.FC = () => {
 
   const getQuestionsByType = (type: string) => activeChapter?.questions?.filter(q => q.type === type) || [];
 
+  const getCategoryColor = (category?: string) => {
+    switch(category) {
+      case 'CHEMISTRY': return 'bg-cyan-50 text-cyan-600 border-cyan-100';
+      case 'BIOLOGY': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
+      case 'PHYSICS': return 'bg-blue-50 text-blue-600 border-blue-100';
+      case 'ECOLOGY': return 'bg-lime-50 text-lime-600 border-lime-100';
+      default: return 'bg-gray-50 text-gray-600 border-gray-100';
+    }
+  };
+
   return (
-    <div className="relative min-h-screen overflow-x-hidden">
-      {/* Loading Overlay for PDF Generation */}
+    <div className="relative min-h-screen overflow-x-hidden bg-[#f1f5f9]">
+      {/* PDF Generation Loader */}
       {generatingPdf && (
         <div className="fixed inset-0 z-[300] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center">
-          <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl text-center space-y-6 max-w-sm border border-white/20">
-            <div className="w-20 h-20 border-4 border-slate-100 border-t-red-500 rounded-full animate-spin mx-auto"></div>
-            <div>
-              <h3 className="text-2xl font-black text-slate-800">Generating PDF</h3>
-              <p className="text-slate-500 font-medium">Please wait while we render your question paper...</p>
-            </div>
+          <div className="bg-white p-10 rounded-3xl shadow-2xl text-center space-y-6 max-w-sm">
+            <div className="w-16 h-16 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
+            <h3 className="text-xl font-bold text-slate-800">Generating Exam Paper...</h3>
           </div>
         </div>
       )}
@@ -193,12 +199,12 @@ const App: React.FC = () => {
       {/* Feedback Toast */}
       {feedback && (
         <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[250] bg-slate-900 text-white px-8 py-4 rounded-full shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
-          <i className="fas fa-magic text-indigo-400"></i>
-          <span className="font-bold text-sm tracking-tight">{feedback}</span>
+          <i className="fas fa-check-circle text-emerald-400"></i>
+          <span className="font-bold text-sm">{feedback}</span>
         </div>
       )}
 
-      {/* 1. PRINT-TEMPLATE - Referenced by html2pdf (Lives off-screen) */}
+      {/* Off-screen Print Template */}
       <div ref={printRef} className="print-template font-serif p-16 bg-white text-black">
         {activeChapter && (
           <div className="pdf-container">
@@ -206,164 +212,130 @@ const App: React.FC = () => {
                <p className="text-sm font-bold uppercase tracking-[0.3em] mb-2 text-slate-600">Central Board of Secondary Education</p>
                <h1 className="text-4xl font-black uppercase mb-4 tracking-tight">Secondary School Examination 2026</h1>
                <p className="text-2xl font-bold border-t-2 border-slate-100 pt-6">{activeChapter.name}</p>
-               <div className="flex justify-between mt-8 text-base font-black uppercase px-8 text-slate-700">
-                  <span>Class: X Science</span>
-                  <span>Batch: 2026 (Predicted)</span>
-                  <span>Time: 3 Hours</span>
-               </div>
             </div>
-
+            {/* ... sections ... */}
             {['MCQ', 'VSA', 'SA', 'LA', 'CASE'].map((type, sIdx) => {
                const qs = getQuestionsByType(type);
                if (qs.length === 0) return null;
                return (
                   <div key={type} className="mb-14 page-break-avoid">
-                     <div className="bg-black text-white px-6 py-2.5 font-bold uppercase tracking-widest mb-8 text-center text-sm">
-                        Section {String.fromCharCode(65 + sIdx)}: {
-                          type === 'MCQ' ? 'Multiple Choice' : 
-                          type === 'VSA' ? 'Very Short' : 
-                          type === 'SA' ? 'Short Answer' : 
-                          type === 'LA' ? 'Long Answer' : 'Case Study'
-                        }
-                     </div>
+                     <div className="bg-black text-white px-6 py-2.5 font-bold uppercase tracking-widest mb-8 text-center text-sm">Section {String.fromCharCode(65 + sIdx)}</div>
                      <div className="space-y-10">
                         {qs.map((q, idx) => (
                            <div key={idx} className="flex gap-6">
                               <span className="font-bold min-w-[3rem] text-xl">Q{(activeChapter.questions?.indexOf(q) || 0) + 1}.</span>
                               <div className="flex-grow text-xl leading-[1.6]">{q.text}</div>
-                              <span className="font-bold whitespace-nowrap text-xl">[{q.marks}]</span>
+                              <span className="font-bold text-xl">[{q.marks}]</span>
                            </div>
                         ))}
                      </div>
                   </div>
                );
             })}
-
-            {activeChapter.answersGenerated && (
-               <div className="pt-20" style={{ pageBreakBefore: 'always' }}>
-                  <div className="text-center border-b-4 border-red-600 pb-6 mb-12">
-                     <h2 className="text-3xl font-black text-red-600 uppercase tracking-widest">A1 Grade Solutions Guide</h2>
-                  </div>
-                  <div className="space-y-16">
-                     {activeChapter.questions?.map((q, idx) => {
-                        const ans = activeChapter.answers?.find(a => a.questionId === q.id);
-                        if (!ans) return null;
-                        return (
-                           <div key={idx} className="border-b border-slate-100 pb-12 last:border-none page-break-avoid">
-                              <div className="flex items-center gap-3 mb-6">
-                                <span className="bg-red-500 text-white px-4 py-1 font-black rounded text-sm">Ans {idx + 1}</span>
-                              </div>
-                              <div className="text-xl leading-[1.7] whitespace-pre-wrap text-slate-900 font-medium mb-8">
-                                {ans.content}
-                              </div>
-                              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
-                                <p className="text-xs font-black uppercase text-slate-400 mb-4 tracking-wider">CBSE Marking Points:</p>
-                                <ul className="list-disc list-inside space-y-3 text-sm text-slate-700 font-bold">
-                                  {ans.markingSchemePoints.map((pt, pIdx) => (
-                                    <li key={pIdx}>{pt}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                           </div>
-                        );
-                     })}
-                  </div>
-               </div>
-            )}
-            <div className="mt-24 text-center border-t-2 border-slate-100 pt-10 text-xs text-slate-300 font-black uppercase tracking-[0.5em]">
-              Predictor Pro AI • Confidential Exam Resource
-            </div>
           </div>
         )}
       </div>
 
-      {/* 2. DASHBOARD */}
-      <div className="no-print min-h-screen bg-slate-50 pb-12">
-        <header className="bg-slate-900 text-white py-14 px-4 shadow-2xl mb-12 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/20 rounded-full blur-[120px] -mr-48 -mt-48"></div>
-          <div className="container mx-auto max-w-6xl relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
-            <div>
-              <div className="inline-flex items-center gap-2 bg-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-[10px] font-black uppercase mb-4 tracking-widest border border-indigo-500/20">
-                <i className="fas fa-brain"></i>
-                Trend Analysis Engine Active
-              </div>
-              <h1 className="text-6xl font-black mb-3 tracking-tighter">Science Predictor</h1>
-              <p className="text-slate-400 text-xl max-w-lg font-medium leading-relaxed">High-yield board predictions for Class X 2026 Batch.</p>
+      {/* DASHBOARD HEADER - MATCHED TO SCREENSHOT */}
+      <div className="no-print">
+        <header className="bg-[#0f172a] text-white py-16 px-6 relative overflow-hidden">
+          <div className="container mx-auto max-w-7xl relative z-10">
+            <div className="inline-flex items-center gap-2 bg-[#1e293b] text-[#818cf8] px-3 py-1 rounded-md text-[10px] font-bold uppercase mb-6 border border-[#334155]">
+              <i className="fas fa-microchip text-[8px]"></i>
+              Deep Trend AI Active
             </div>
-            <div className="flex items-center gap-6 bg-white/5 p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-md shadow-2xl">
-               <div className="text-center px-6 border-r border-white/10">
-                  <div className="text-3xl font-black text-indigo-400">80/80</div>
-                  <div className="text-[10px] uppercase font-black text-slate-500 tracking-wider">Goal</div>
-               </div>
-               <div className="text-center px-6">
-                  <div className="text-3xl font-black text-emerald-400">13</div>
-                  <div className="text-[10px] uppercase font-black text-slate-500 tracking-wider">Topics</div>
-               </div>
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-8">
+              <div className="max-w-3xl">
+                <h1 className="text-6xl font-black mb-6 tracking-tight leading-none">Science: 2026 X Board Predictor</h1>
+                <p className="text-slate-400 text-xl font-medium max-w-2xl leading-relaxed">Most probable Science questions based on NCERT content and last 5 years patterns.</p>
+              </div>
+              <div className="flex items-center gap-12 bg-white/5 p-6 rounded-2xl backdrop-blur-sm border border-white/10">
+                <div className="text-center pr-12 border-r border-white/10">
+                  <div className="text-4xl font-black text-white">13</div>
+                  <div className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mt-1">Chapters</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-4xl font-black text-[#818cf8]">2026</div>
+                  <div className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mt-1">Target Year</div>
+                </div>
+              </div>
             </div>
           </div>
         </header>
 
-        <main className="container mx-auto max-w-6xl px-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {chapters.map((chapter) => (
-            <div key={chapter.id} className="group bg-white rounded-[3rem] p-10 shadow-sm border border-slate-100 transition-all hover:shadow-2xl hover:-translate-y-2">
-              <span className="text-[11px] font-black px-4 py-1.5 rounded-full uppercase border bg-slate-50 text-slate-500 mb-8 inline-block tracking-tighter group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">Topic {chapter.id}</span>
-              <h3 className="text-3xl font-black text-slate-800 mb-10 min-h-[5rem] leading-[1.1] tracking-tight group-hover:text-indigo-600 transition-colors">{chapter.name}</h3>
-              {chapter.status === 'ready' ? (
-                <button onClick={() => startPrediction(chapter)} className="w-full bg-slate-900 hover:bg-indigo-600 text-white font-black py-5 rounded-[1.5rem] transition-all shadow-xl shadow-slate-200 active:scale-95">Analyze Topic</button>
-              ) : chapter.status === 'generating' ? (
-                <div className="w-full bg-indigo-50 text-indigo-600 font-black py-5 rounded-[1.5rem] flex items-center justify-center gap-3 animate-pulse shimmer">
-                  Scanning Data...
+        {/* MAIN GRID - MATCHED TO SCREENSHOT */}
+        <main className="container mx-auto max-w-7xl px-6 py-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {chapters.map((chapter) => (
+              <div key={chapter.id} className="bg-white rounded-[2.5rem] p-10 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 flex flex-col justify-between">
+                <div>
+                  <span className={`inline-block text-[10px] font-black px-4 py-1.5 rounded-full uppercase border mb-8 tracking-tighter ${getCategoryColor(chapter.category as string)}`}>
+                    {chapter.category} • CH {chapter.id}
+                  </span>
+                  <h3 className="text-3xl font-black text-[#1e293b] mb-10 leading-[1.15] tracking-tight">{chapter.name}</h3>
                 </div>
-              ) : (
-                <button onClick={() => setActiveChapter(chapter)} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black py-5 rounded-[1.5rem] transition-all shadow-xl shadow-emerald-100 active:scale-95 flex items-center justify-center gap-3">
-                  <i className="fas fa-eye"></i>
-                  View Hotspots
-                </button>
-              )}
-            </div>
-          ))}
+                
+                {chapter.status === 'ready' ? (
+                  <button onClick={() => startPrediction(chapter)} className="w-full bg-[#111827] hover:bg-[#1e293b] text-white font-black py-5 rounded-2xl transition-all flex items-center justify-center gap-3 group active:scale-95 shadow-lg shadow-slate-200">
+                    <i className="fas fa-bolt text-yellow-400 group-hover:animate-pulse"></i>
+                    Get Predictions
+                  </button>
+                ) : chapter.status === 'generating' ? (
+                  <div className="w-full bg-slate-50 text-slate-400 font-bold py-5 rounded-2xl flex items-center justify-center gap-3 animate-pulse border border-slate-100">
+                    <i className="fas fa-circle-notch fa-spin"></i>
+                    Predicting...
+                  </div>
+                ) : (
+                  <button onClick={() => setActiveChapter(chapter)} className="w-full bg-[#111827] hover:bg-[#1e293b] text-white font-black py-5 rounded-2xl transition-all flex items-center justify-center gap-3 active:scale-95">
+                    <i className="fas fa-eye text-emerald-400"></i>
+                    View Results
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         </main>
 
+        {/* PREDICTION MODAL */}
         {activeChapter && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-lg animate-in fade-in duration-300">
-            <div className="bg-white rounded-[4rem] shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col border border-white/20 animate-in zoom-in-95 duration-300">
-              <div className="p-12 bg-slate-900 text-white flex-shrink-0 flex justify-between items-center border-b border-white/5 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-indigo-500/10 to-transparent"></div>
-                <div className="relative z-10">
-                  <div className="text-indigo-400 text-[10px] font-black uppercase mb-2 flex items-center gap-2 tracking-[0.2em]">
-                    <i className="fas fa-bolt"></i>
-                    Exam Prediction Set
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="bg-white rounded-[3.5rem] shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col border border-white/20 animate-in zoom-in-95 duration-300">
+              <div className="p-12 bg-[#0f172a] text-white flex-shrink-0 flex justify-between items-center border-b border-white/5">
+                <div>
+                  <div className="text-[#818cf8] text-[10px] font-bold uppercase mb-2 tracking-[0.2em] flex items-center gap-2">
+                    <i className="fas fa-sparkles"></i>
+                    Hotspot Analysis Engine
                   </div>
-                  <h2 className="text-4xl font-black tracking-tight">{activeChapter.name}</h2>
+                  <h2 className="text-4xl font-extrabold tracking-tight">{activeChapter.name}</h2>
                 </div>
-                <button onClick={() => setActiveChapter(null)} className="w-16 h-16 bg-white/10 rounded-[2rem] hover:bg-white/20 transition-all flex items-center justify-center text-white/50 hover:text-white relative z-10 active:scale-90">
+                <button onClick={() => setActiveChapter(null)} className="w-16 h-16 bg-white/10 rounded-2xl hover:bg-white/20 transition-all flex items-center justify-center active:scale-90">
                   <i className="fas fa-times text-xl"></i>
                 </button>
               </div>
               
-              <div className="overflow-y-auto p-12 bg-slate-50/50 custom-scrollbar flex-grow space-y-10">
+              <div className="overflow-y-auto p-12 bg-[#f8fafc] custom-scrollbar flex-grow space-y-8">
                 {activeChapter.questions?.map((q, idx) => {
                   const ans = activeChapter.answers?.find(a => a.questionId === q.id);
                   return (
-                    <div key={idx} className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all">
+                    <div key={idx} className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100 group transition-all hover:border-[#818cf8]/30">
                       <div className="flex flex-wrap gap-3 mb-6">
-                        <span className="text-[11px] font-black px-4 py-2 rounded-full border bg-blue-50 text-blue-600 border-blue-100 uppercase tracking-tighter">{q.type} • {q.marks}M</span>
-                        <span className="text-[11px] font-black px-4 py-2 rounded-full border bg-red-50 text-red-600 border-red-100 uppercase tracking-tighter">{q.probabilityScore}% Probable</span>
+                        <span className="text-[10px] font-black px-4 py-2 rounded-full border bg-blue-50 text-blue-600 border-blue-100 uppercase tracking-tighter">{q.type} • {q.marks} Marks</span>
+                        <span className="text-[10px] font-black px-4 py-2 rounded-full border bg-amber-50 text-amber-600 border-amber-100 uppercase tracking-tighter">{q.probabilityScore}% Probable</span>
                       </div>
-                      <p className="text-2xl font-black text-slate-800 leading-tight mb-6">{q.text}</p>
-                      <p className="text-sm text-slate-400 font-medium mb-6">Reason: {q.reasoning}</p>
+                      <p className="text-2xl font-black text-[#1e293b] leading-snug mb-6">{q.text}</p>
+                      <p className="text-sm text-slate-500 font-medium bg-slate-50 p-4 rounded-xl italic">
+                        <i className="fas fa-lightbulb text-amber-400 mr-2"></i>
+                        {q.reasoning}
+                      </p>
                       
                       {activeChapter.answersGenerated && ans && (
-                        <div className="mt-8 p-10 bg-indigo-50/50 rounded-[2.5rem] border border-indigo-100 animate-in slide-in-from-top-4 duration-500">
-                          <div className="flex items-center gap-2 mb-6">
-                            <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
-                            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Model Solution</span>
-                          </div>
-                          <p className="text-slate-700 leading-relaxed text-lg whitespace-pre-wrap font-bold mb-6">{ans.content}</p>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="mt-8 p-10 bg-[#f1f5f9] rounded-[2rem] border border-slate-200 animate-in slide-in-from-top-4 duration-500">
+                          <p className="text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-4">A1-Grade Solution Guide</p>
+                          <p className="text-[#334155] leading-relaxed text-lg font-bold mb-6 whitespace-pre-wrap">{ans.content}</p>
+                          <div className="flex flex-wrap gap-4">
                             {ans.markingSchemePoints.map((pt, pIdx) => (
-                              <div key={pIdx} className="flex items-start gap-3 bg-white/60 p-4 rounded-2xl border border-indigo-50 text-xs font-bold text-slate-600">
-                                <i className="fas fa-check text-indigo-500 mt-0.5"></i>
+                              <div key={pIdx} className="bg-white px-5 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 flex items-center gap-2">
+                                <i className="fas fa-check text-emerald-500"></i>
                                 {pt}
                               </div>
                             ))}
@@ -375,39 +347,39 @@ const App: React.FC = () => {
                 })}
               </div>
 
-              <div className="p-10 bg-white border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-8 flex-shrink-0">
+              <div className="p-10 bg-white border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-8">
                 <div className="flex items-center gap-4">
-                  <button onClick={handleGenerateAnswers} disabled={activeChapter.answersGenerated || loadingAnswers} className={`font-black px-10 py-5 rounded-[1.5rem] transition-all shadow-2xl flex items-center gap-3 active:scale-95 ${activeChapter.answersGenerated ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'}`}>
-                    {loadingAnswers ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-unlock"></i>}
-                    {activeChapter.answersGenerated ? 'Solutions Unlocked' : 'Unlock Expert Answers'}
+                  <button onClick={handleGenerateAnswers} disabled={activeChapter.answersGenerated || loadingAnswers} className={`font-black px-10 py-5 rounded-2xl transition-all shadow-xl flex items-center gap-3 active:scale-95 ${activeChapter.answersGenerated ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-[#818cf8] text-white hover:bg-[#6366f1]'}`}>
+                    {loadingAnswers ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-key"></i>}
+                    {activeChapter.answersGenerated ? 'Solutions Unlocked' : 'Unlock Model Answers'}
                   </button>
-                  <button onClick={handleMoreQuestions} disabled={loadingMore} className="bg-slate-100 text-slate-700 font-black px-8 py-5 rounded-[1.5rem] hover:bg-slate-200 transition-all active:scale-95">
-                    {loadingMore ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-plus mr-2"></i>}
-                    Add More
+                  <button onClick={handleMoreQuestions} disabled={loadingMore} className="bg-slate-100 text-slate-700 font-black px-8 py-5 rounded-2xl hover:bg-slate-200 transition-all active:scale-95">
+                    {loadingMore ? <i className="fas fa-circle-notch fa-spin mr-2"></i> : <i className="fas fa-plus mr-2 text-xs"></i>}
+                    Expand Set
                   </button>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-center gap-6">
+                <div className="flex flex-wrap items-center gap-6">
                   <button onClick={handleDownloadPdf} disabled={generatingPdf} className="flex flex-col items-center group disabled:opacity-30 active:scale-90 transition-transform">
-                    <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center group-hover:bg-red-100 transition-all mb-1 border border-red-100">
+                    <div className="w-14 h-14 bg-red-50 rounded-xl flex items-center justify-center group-hover:bg-red-100 transition-all mb-1 border border-red-100 shadow-sm">
                       <i className="fas fa-file-pdf text-red-500 text-xl"></i>
                     </div>
-                    <span className="text-[10px] font-black text-slate-400 group-hover:text-slate-600">SAVE PDF</span>
+                    <span className="text-[9px] font-black text-slate-400">PDF</span>
                   </button>
                   <button onClick={handleDownloadTxt} className="flex flex-col items-center group active:scale-90 transition-transform">
-                    <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center group-hover:bg-slate-100 transition-all mb-1 border border-slate-100">
+                    <div className="w-14 h-14 bg-slate-50 rounded-xl flex items-center justify-center group-hover:bg-slate-100 transition-all mb-1 border border-slate-200 shadow-sm">
                       <i className="fas fa-file-alt text-slate-500 text-xl"></i>
                     </div>
-                    <span className="text-[10px] font-black text-slate-400 group-hover:text-slate-600">SAVE TXT</span>
+                    <span className="text-[9px] font-black text-slate-400">TXT</span>
                   </button>
                   <button onClick={handleCopyToClipboard} className="flex flex-col items-center group active:scale-90 transition-transform">
-                    <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center group-hover:bg-slate-100 transition-all mb-1 border border-slate-100">
+                    <div className="w-14 h-14 bg-slate-50 rounded-xl flex items-center justify-center group-hover:bg-slate-100 transition-all mb-1 border border-slate-200 shadow-sm">
                       <i className="fas fa-copy text-slate-500 text-xl"></i>
                     </div>
-                    <span className="text-[10px] font-black text-slate-400 group-hover:text-slate-600">COPY</span>
+                    <span className="text-[9px] font-black text-slate-400">COPY</span>
                   </button>
                   <div className="w-px h-12 bg-slate-100 mx-2"></div>
-                  <button onClick={() => setActiveChapter(null)} className="bg-slate-900 text-white font-black px-12 py-5 rounded-[1.5rem] hover:bg-black transition-all shadow-xl shadow-slate-200 active:scale-95">Close</button>
+                  <button onClick={() => setActiveChapter(null)} className="bg-[#1e293b] text-white font-black px-12 py-5 rounded-2xl hover:bg-black transition-all active:scale-95">Done</button>
                 </div>
               </div>
             </div>
