@@ -6,6 +6,7 @@ export interface Question {
   type: 'MCQ' | 'VSA' | 'SA' | 'LA' | 'CASE';
   probabilityScore: number; // Percentage 0-100
   reasoning: string; // Why this is likely to appear
+  options?: string[]; // Multiple choice options for MCQ type
 }
 
 export interface Answer {
@@ -18,6 +19,7 @@ export interface Chapter {
   id: number;
   name: string;
   status: 'empty' | 'ready' | 'generating' | 'completed';
+  category?: string;
   questions?: Question[];
   answers?: Answer[];
   answersGenerated?: boolean;

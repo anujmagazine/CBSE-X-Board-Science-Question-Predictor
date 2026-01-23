@@ -24,7 +24,8 @@ export const generateChapterPredictions = async (
     CONSTRAINTS:
     1. Focus on "Hotspots" (frequently asked concepts).
     2. Provide probabilityScore (1-100) and brief reasoning.
-    3. Output must be strict JSON with "questions" and "chapterSummary".
+    3. For type 'MCQ', you MUST provide exactly 4 distinct choices in the "options" array. For other types, "options" should be null or an empty array.
+    4. Output must be strict JSON with "questions" and "chapterSummary".
   `;
 
   const response = await ai.models.generateContent({
@@ -43,9 +44,17 @@ export const generateChapterPredictions = async (
                 id: { type: Type.STRING },
                 text: { type: Type.STRING },
                 marks: { type: Type.NUMBER },
-                type: { type: Type.STRING },
+                type: { 
+                  type: Type.STRING,
+                  description: "One of: MCQ, VSA, SA, LA, CASE"
+                },
                 probabilityScore: { type: Type.NUMBER },
-                reasoning: { type: Type.STRING }
+                reasoning: { type: Type.STRING },
+                options: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                  description: "Exactly 4 options if type is MCQ, otherwise empty."
+                }
               },
               required: ["id", "text", "marks", "type", "probabilityScore", "reasoning"]
             }
@@ -66,9 +75,10 @@ export const generateAnswersForQuestions = async (questions: Question[]): Promis
   const prompt = `
     For the following CBSE Class X Science questions, generate expert model answers and marking scheme points.
     IMPORTANT: You MUST use the exact same "id" provided for each question as the "questionId" in your response.
+    If the question is an MCQ, specify the correct option and explain why it is correct.
     
     QUESTIONS:
-    ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, marks: q.marks })))}
+    ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, marks: q.marks, options: q.options })))}
     
     Output a JSON object with an "answers" array.
   `;

@@ -141,6 +141,11 @@ const App: React.FC = () => {
     content += `==============================================\n\n`;
     activeChapter.questions?.forEach((q, i) => {
       content += `Q${i+1} [${q.marks} Marks]: ${q.text}\n`;
+      if (q.options && q.options.length > 0) {
+        q.options.forEach((opt, oIdx) => {
+          content += `  (${String.fromCharCode(97 + oIdx)}) ${opt}\n`;
+        });
+      }
       const ans = activeChapter.answers?.find(a => a.questionId === q.id);
       if (ans) {
         content += `\nSOLUTION:\n${ans.content}\n`;
@@ -165,6 +170,12 @@ const App: React.FC = () => {
     let content = `CBSE SCIENCE 2026 PREDICTOR - ${activeChapter.name}\n\n`;
     activeChapter.questions?.forEach((q, i) => {
       content += `Q${i+1} (${q.marks}m): ${q.text}\n`;
+      if (q.options && q.options.length > 0) {
+        q.options.forEach((opt, oIdx) => {
+          content += `(${String.fromCharCode(97 + oIdx)}) ${opt} `;
+        });
+        content += `\n`;
+      }
       const ans = activeChapter.answers?.find(a => a.questionId === q.id);
       if (ans) content += `Ans: ${ans.content}\n`;
       content += `\n`;
@@ -213,7 +224,6 @@ const App: React.FC = () => {
                <h1 className="text-4xl font-black uppercase mb-4 tracking-tight">Secondary School Examination 2026</h1>
                <p className="text-2xl font-bold border-t-2 border-slate-100 pt-6">{activeChapter.name}</p>
             </div>
-            {/* ... sections ... */}
             {['MCQ', 'VSA', 'SA', 'LA', 'CASE'].map((type, sIdx) => {
                const qs = getQuestionsByType(type);
                if (qs.length === 0) return null;
@@ -224,7 +234,18 @@ const App: React.FC = () => {
                         {qs.map((q, idx) => (
                            <div key={idx} className="flex gap-6">
                               <span className="font-bold min-w-[3rem] text-xl">Q{(activeChapter.questions?.indexOf(q) || 0) + 1}.</span>
-                              <div className="flex-grow text-xl leading-[1.6]">{q.text}</div>
+                              <div className="flex-grow">
+                                <div className="text-xl leading-[1.6] mb-4">{q.text}</div>
+                                {q.options && q.options.length > 0 && (
+                                  <div className="grid grid-cols-2 gap-4 ml-4">
+                                    {q.options.map((opt, oIdx) => (
+                                      <div key={oIdx} className="text-lg">
+                                        <span className="font-bold">({String.fromCharCode(97 + oIdx)})</span> {opt}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                               <span className="font-bold text-xl">[{q.marks}]</span>
                            </div>
                         ))}
@@ -236,7 +257,6 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {/* DASHBOARD HEADER - MATCHED TO SCREENSHOT */}
       <div className="no-print">
         <header className="bg-[#0f172a] text-white py-16 px-6 relative overflow-hidden">
           <div className="container mx-auto max-w-7xl relative z-10">
@@ -263,13 +283,12 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {/* MAIN GRID - MATCHED TO SCREENSHOT */}
         <main className="container mx-auto max-w-7xl px-6 py-16">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {chapters.map((chapter) => (
               <div key={chapter.id} className="bg-white rounded-[2.5rem] p-10 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 flex flex-col justify-between">
                 <div>
-                  <span className={`inline-block text-[10px] font-black px-4 py-1.5 rounded-full uppercase border mb-8 tracking-tighter ${getCategoryColor(chapter.category as string)}`}>
+                  <span className={`inline-block text-[10px] font-black px-4 py-1.5 rounded-full uppercase border mb-8 tracking-tighter ${getCategoryColor(chapter.category)}`}>
                     {chapter.category} • CH {chapter.id}
                   </span>
                   <h3 className="text-3xl font-black text-[#1e293b] mb-10 leading-[1.15] tracking-tight">{chapter.name}</h3>
@@ -296,7 +315,6 @@ const App: React.FC = () => {
           </div>
         </main>
 
-        {/* PREDICTION MODAL */}
         {activeChapter && (
           <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
             <div className="bg-white rounded-[3.5rem] shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col border border-white/20 animate-in zoom-in-95 duration-300">
@@ -322,7 +340,21 @@ const App: React.FC = () => {
                         <span className="text-[10px] font-black px-4 py-2 rounded-full border bg-blue-50 text-blue-600 border-blue-100 uppercase tracking-tighter">{q.type} • {q.marks} Marks</span>
                         <span className="text-[10px] font-black px-4 py-2 rounded-full border bg-amber-50 text-amber-600 border-amber-100 uppercase tracking-tighter">{q.probabilityScore}% Probable</span>
                       </div>
-                      <p className="text-2xl font-black text-[#1e293b] leading-snug mb-6">{q.text}</p>
+                      <p className="text-2xl font-black text-[#1e293b] leading-snug mb-4">{q.text}</p>
+                      
+                      {q.options && q.options.length > 0 && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6 ml-2">
+                          {q.options.map((opt, oIdx) => (
+                            <div key={oIdx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-slate-700 font-semibold text-lg flex items-center gap-3">
+                              <span className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-slate-200 text-sm font-black text-indigo-600">
+                                {String.fromCharCode(65 + oIdx)}
+                              </span>
+                              {opt}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
                       <p className="text-sm text-slate-500 font-medium bg-slate-50 p-4 rounded-xl italic">
                         <i className="fas fa-lightbulb text-amber-400 mr-2"></i>
                         {q.reasoning}
